@@ -1,5 +1,5 @@
 # CPU-from-start-to-earth
-组长：
+# 组长：
 # 11/24
 * 目前已经pass 到 point 36
 * 基本框架大体完成
