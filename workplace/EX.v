@@ -91,6 +91,7 @@ module EX(
     is_delay_slot_i,
     link_address_o
     }=is_in_delay_to_ex_r;
+    //存储或读取时向ram输入的使能和地址
     assign ld_and_st_op=data_sram_en? inst[31:26]:6'b000000;
     assign data_sram_addr=data_sram_en? rf_rdata1+{{16{inst[15]}},inst[15:0]}:32'b0;
     assign data_sram_wdata=data_sram_en?rf_rdata2:32'b0;

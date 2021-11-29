@@ -179,7 +179,7 @@ module ID(
     	.in  (rd  ),
         .out (rd_d)
     );
- 
+ //判断操作符是那种类型
     assign inst_ori     = op_d[6'b00_1101];
     assign inst_lui     = op_d[6'b00_1111];
     assign inst_addiu   = op_d[6'b00_1001];
@@ -226,7 +226,7 @@ module ID(
     assign inst_sw     = op_d[6'b101011];
     assign inst_lw      = op_d[6'b100011];
     
-
+//传给ex的结果，包含数据相关
     assign reg_o1=((ce==1'b1)&&(ex_to_id_we==1'b1)&&(ex_to_id_waddr==rs))? ex_to_id_wdata 
     : ((ce==1'b1)&&(mem_to_id_we==1'b1)&&(mem_to_id_waddr==rs))? mem_to_id_wdata
     : (ce==1'b1)? rdata1:(ce==1'b0)? imm:`INIT;
@@ -234,36 +234,36 @@ module ID(
     : ((ce==1'b1)&&(mem_to_id_we==1'b1)&&(mem_to_id_waddr==rt))? mem_to_id_wdata
      : (ce==1'b1)? rdata2:(ce==1'b0)? imm:`INIT;
 
-    // rs to reg1
+    // rs to reg1  操作数1选择是否从取rs对应地址的值
     assign sel_alu_src1[0] = inst_ori | inst_addiu | inst_sudu 
     | inst_addu | inst_or | inst_sw | inst_lw | inst_xor | inst_sltu
     | inst_slt | inst_slti | inst_sltiu | inst_add | inst_sllv | inst_addi
     | inst_sub | inst_srav | inst_and | inst_nor | inst_andi | inst_xori
     | inst_srlv | inst_bgezal | inst_bltzal | inst_jalr;
 
-    // pc to reg1
+    // pc to reg1  //操作数1选择是否取PC的值
     assign sel_alu_src1[1] = 1'b0;
 
-    // sa_zero_extend to reg1
+    // sa_zero_extend to reg1 //取sa扩展
     assign sel_alu_src1[2] = inst_sll | inst_sra | inst_srl;
 
     
-    // rt to reg2
+    // rt to reg2 操作数2选择是否从取rt对应地址的值
     assign sel_alu_src2[0] = inst_sudu | inst_addu | inst_sll | inst_or | inst_sw | inst_xor
                                               | inst_sltu | inst_slt | inst_add | inst_sllv | inst_sub | inst_sra 
                                               | inst_srav | inst_srl | inst_and | inst_nor | inst_srlv;
     
-    // imm_sign_extend to reg2
+    // imm_sign_extend to reg2  操作数2选择取有符号扩展的立即数
     assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_slti | inst_sltiu | inst_addi;
 
     // 32'b8 to reg2
     assign sel_alu_src2[2] = 1'b0;
 
-    // imm_zero_extend to reg2
+    // imm_zero_extend to reg2  操作数2取有无符号扩展的立即数
     assign sel_alu_src2[3] = inst_ori | inst_andi | inst_xori;
 
 
-
+//alu运算类型
     assign op_add = inst_addiu | inst_addu | inst_add | inst_addi;
     assign op_sub = inst_sudu | inst_sub;
     assign op_slt = inst_slt | inst_slti;
@@ -283,15 +283,15 @@ module ID(
 
 
 
-    // load and store enable
+    // load and store enable 是否进行load和store操作
     assign data_sram_en = inst_sw | inst_lw;
 
-    // write enable
+    // write enable  写使能 0000代表load  对应位为1代表对应位写入
     assign data_sram_wen = inst_sw ? 4'b1111: 4'b0000;
 
 
 
-    // regfile sotre enable
+    // regfile sotre enable 是否将结果写入寄存器
     assign rf_we = inst_ori | inst_lui | inst_addiu | inst_sudu | inst_jal
      | inst_addu | inst_sll | inst_or | inst_lw | inst_xor | inst_sltu | inst_slt
      | inst_slti | inst_sltiu | inst_add | inst_sllv | inst_addi | inst_sub | inst_sra
@@ -299,8 +299,8 @@ module ID(
      | inst_bgezal | inst_bltzal | inst_jalr;
 
 
-
-    // store in [rd]
+//选择存到哪个寄存器中
+    // store in [rd] 
     assign sel_rf_dst[0] = inst_sudu | inst_addu | inst_sll | inst_or | inst_xor | inst_sltu
                                            | inst_slt | inst_add | inst_sllv | inst_sub | inst_sra | inst_srav
                                            | inst_and | inst_nor | inst_srl | inst_srlv | inst_jalr;
@@ -311,7 +311,7 @@ module ID(
     assign sel_rf_dst[2] = inst_jal | inst_bgezal | inst_bltzal;
 
 
-    // sel for regfile address
+    // sel for regfile address 要写入寄存器的addr
     assign rf_waddr = {5{sel_rf_dst[0]}} & rd 
                     | {5{sel_rf_dst[1]}} & rt
                     | {5{sel_rf_dst[2]}} & 32'd31;
@@ -333,7 +333,7 @@ module ID(
         reg_o2        // 31:0
     };
 
-
+//跳转模块
     wire br_e;
     wire [31:0] br_addr;
     wire is_delay_slot_to_ex;
@@ -348,6 +348,7 @@ module ID(
     assign pc_plus_4 = id_pc + 32'h4;
 
     assign rs_eq_rt = (reg_o1==reg_o2);
+    //是否满足跳转条件
     assign beq=inst_beq&rs_eq_rt;
     assign jr=inst_jr;
     assign jal=inst_jal;
@@ -361,7 +362,9 @@ module ID(
     assign bltz = reg_o1[31]&inst_bltz;
     assign bgezal =~reg_o1[31]&inst_bgezal;
     assign bltzal=reg_o1[31]&inst_bltzal;
+    //跳转信号 是否跳转
     assign br_e =  j | beq | jr | jal | jalr | bne | bgez | bgtz | blez | bltz | bgezal | bltzal;
+    // 跳转地址
     assign br_addr = beq ? (pc_plus_4 + {{14{inst[15]}},inst[15:0],2'b0}) : jr ? (reg_o1): jal?
      {pc_plus_4[31:28],inst[25:0],2'b00} :
      bne? (pc_plus_4 + {{14{inst[15]}},inst[15:0],2'b0}):
@@ -378,7 +381,7 @@ module ID(
         br_e,
         br_addr
     };
-    
+    // 延迟槽与 写入31号寄存器的值
     assign is_delay_slot_to_ex=j | beq | jr | jal | jalr | bne | bgez | bgtz | blez | bltz | inst_bgezal | inst_bltzal;
     assign link_addr_to_ex=jal?pc_plus_4+32'h4:
                                                jalr?pc_plus_4+32'h4:
@@ -388,7 +391,7 @@ module ID(
     is_delay_slot_to_ex,
     link_addr_to_ex
     };
-    
+    //暂停机制
      assign stallreq=((ex_to_id_op==6'b100011)&&(ce==1'b1)&&(ex_to_id_we==1'b1)&&(ex_to_id_waddr==rs))?
     `Stop :((ex_to_id_op==6'b100011)&&(ce==1'b1)&&(ex_to_id_we==1'b1)&&(ex_to_id_waddr==rt))? `Stop: `NoStop;
 
