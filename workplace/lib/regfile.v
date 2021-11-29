@@ -17,7 +17,7 @@ module regfile(
             reg_array[waddr] <= wdata;
         end
     end
-
+//增加了相隔三条的数据相关
     // read out 1
     assign rdata1 = (raddr1 == 5'b0) ? 32'b0 : (raddr1==waddr) ? wdata: reg_array[raddr1];
 
