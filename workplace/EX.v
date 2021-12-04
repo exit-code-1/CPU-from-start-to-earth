@@ -38,12 +38,13 @@ module EX(
 
     wire [31:0] ex_pc, inst;
     wire [11:0] alu_op;
-    wire [2:0] sel_alu_src1;
-    wire [3:0] sel_alu_src2;
+    wire [4:0] sel_alu_src1;
+    wire [4:0] sel_alu_src2;
     wire rf_we;
     wire [4:0] rf_waddr;
     wire sel_rf_res;
     wire [31:0] rf_rdata1, rf_rdata2;
+    wire hilo_we;
 
     assign {
         ex_pc,          // 148:117
@@ -53,6 +54,7 @@ module EX(
         sel_alu_src2,   // 79:76
         data_sram_en,    // 75
         data_sram_wen,   // 74:71
+        hilo_we,
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64
@@ -67,7 +69,9 @@ module EX(
 
     wire [31:0] alu_src1, alu_src2;
     wire [31:0] alu_result, ex_result;
-    
+    wire [63:0] mul_result;
+    wire mul_sign;
+    wire mul_start;
     assign alu_src1 = sel_alu_src1[1] ? ex_pc :
                       sel_alu_src1[2] ? sa_zero_extend : rf_rdata1;
 
@@ -81,6 +85,16 @@ module EX(
         .alu_src2    (alu_src2    ),
         .alu_result  (alu_result  )
     );
+    MLU u_MLU (
+             .clk (clk),
+             .resten (~rst),
+             .mul_sign (mul_sign),
+             .mul_start_i (mul_start),
+             .mul_op1 (rf_rdata1),
+             .mul_op2 (rf_rdata2),
+             .result (mul_result)
+              );
+             
     wire is_delay_slot_i;
     wire [31:0] link_address_o;
    
