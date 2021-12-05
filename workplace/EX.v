@@ -37,8 +37,8 @@ module EX(
 
     wire [31:0] ex_pc, inst;
     wire [11:0] alu_op;
-    wire [4:0] sel_alu_src1;
-    wire [4:0] sel_alu_src2;
+    wire [2:0] sel_alu_src1;
+    wire [3:0] sel_alu_src2;
     wire rf_we;
     wire [4:0] rf_waddr;
     wire sel_rf_res;
@@ -105,7 +105,7 @@ module EX(
     );
     MLU u_MLU (
              .clk (clk),
-             .resten (~rst),
+             .resetn (~rst),
              .mul_sign (mul_sign),
              .mul_start_i (mul_start),
              .mul_op1 (mul_op1),

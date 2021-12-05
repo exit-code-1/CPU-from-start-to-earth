@@ -33,6 +33,12 @@ module ID(
     wire wb_rf_we;
     wire [4:0] wb_rf_waddr;
     wire [31:0] wb_rf_wdata;
+    wire hi_we;
+    wire lo_we;
+    wire hi_re;
+    wire lo_re;
+    wire [31:0] hi_o;
+    wire [31:0] lo_o;
     reg id_stop;
 
     always @ (posedge clk) begin
@@ -63,9 +69,13 @@ module ID(
         id_pc
     } = if_to_id_bus_r;
     assign {
+        hi_we,
+        lo_we,
         wb_rf_we,
         wb_rf_waddr,
-        wb_rf_wdata
+        wb_rf_wdata,
+        hi_o,
+        lo_o
     } = wb_to_rf_bus;
 
     wire [5:0] opcode;
@@ -82,7 +92,7 @@ module ID(
     wire [31:0] rs_d, rt_d, rd_d, sa_d;
 
     wire [2:0] sel_alu_src1;
-    wire [2:0] sel_alu_src2;
+    wire [3:0] sel_alu_src2;
     wire [11:0] alu_op;
 
     wire data_sram_en;
@@ -112,10 +122,7 @@ module ID(
     wire [31:0] mem_to_id_hi;
     wire [31:0] mem_to_id_lo;
     
-    wire hi_we;
-    wire lo_we;
-    wire hi_re;
-    wire lo_re;
+
     regfile u_regfile(
     	.clk    (clk    ),
         .raddr1 (rs ),
@@ -124,7 +131,13 @@ module ID(
         .rdata2 (rdata2 ),
         .we     (wb_rf_we     ),
         .waddr  (wb_rf_waddr  ),
-        .wdata  (wb_rf_wdata  )
+        .wdata  (wb_rf_wdata  ),
+        .hi_we (hi_we),
+        .lo_we (lo_we),
+        .hi_i (hi_o),
+        .lo_i (lo_o),
+        .hi_re (hi_re),
+        .lo_re (lo_re)
     );
 
     assign opcode = inst[31:26];
@@ -143,20 +156,20 @@ module ID(
     assign {
         ex_to_id_we,
         ex_to_id_waddr,
-        ex_to_id_op,
-        ex_to_id_wdata,
         ex_to_id_hi_we,
         ex_to_id_lo_we,
         ex_to_id_hi,
-        ex_to_id_lo
+        ex_to_id_lo,
+        ex_to_id_op,
+        ex_to_id_wdata
     }=ex_to_id_bus;
 
     assign {
+        mem_to_id_hi_we,
+        mem_to_id_lo_we,
         mem_to_id_we,
         mem_to_id_waddr,
         mem_to_id_wdata,
-        mem_to_id_hi_we,
-        mem_to_id_lo_we,
         mem_to_id_hi,
         mem_to_id_lo
     }=mem_to_id_bus;

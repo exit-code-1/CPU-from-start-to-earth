@@ -15,7 +15,7 @@ module regfile(
     input wire hi_re,
     input wire lo_re,
     input wire [31:0] hi_i,
-    input wire [31:0] lo_i,
+    input wire [31:0] lo_i
 );
     reg [31:0] reg_array [31:0];
     reg [31:0] hi_o;
