@@ -39,16 +39,24 @@ module MEM(
     wire [31:0] mem_result;
     wire [5:0]ld_and_st_op;
     wire inst_sw,inst_lw;
+    wire hi_we;
+    wire lo_we;
+    wire [31:0]hi_o;
+    wire [31:0]lo_o;
     
     assign {
         mem_pc,        // 107:76+8
        data_sram_en,    // 75
         data_sram_wen,   // 74:71
         sel_rf_res,     // 70
+        hi_we,
+        lo_we,
         rf_we,          // 69
         rf_waddr,       // 68:64
         ld_and_st_op, //63:32
-        ex_result       // 31:0
+        ex_result,       // 31:0
+        hi_o,
+        lo_o
     } =  ex_to_mem_bus_r;
 
     assign inst_sw=(ld_and_st_op==`SW);
@@ -59,14 +67,22 @@ module MEM(
     
     assign mem_to_wb_bus = {
         mem_pc,     // 41:38
+        hi_we,
+        lo_we,
         rf_we,      // 37
         rf_waddr,   // 36:32
-        rf_wdata    // 31:0
+        rf_wdata,    // 31:0
+        hi_o,
+        lo_o
     };
    assign mem_to_id_bus= { 
+        hi_we,
+        lo_we,
         rf_we,
         rf_waddr,
-        rf_wdata
+        rf_wdata,
+        hi_o,
+        lo_o
     };
 
 

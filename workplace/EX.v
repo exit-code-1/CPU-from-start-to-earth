@@ -8,7 +8,6 @@ module EX(
     input wire [`ID_TO_EX_WD-1:0] id_to_ex_bus,
     input wire [`DELAY_TO_EX_WD-1:0] is_in_delay_to_ex,
     output wire [`EX_TO_MEM_WD-1:0] ex_to_mem_bus,
-
     output wire data_sram_en,
     output wire [3:0] data_sram_wen,
     output wire [31:0] data_sram_addr,
@@ -44,8 +43,11 @@ module EX(
     wire [4:0] rf_waddr;
     wire sel_rf_res;
     wire [31:0] rf_rdata1, rf_rdata2;
-    wire hilo_we;
-
+    wire hi_we;
+    wire lo_we;
+    wire [31:0] hi_o;
+    wire [31:0] lo_o;
+    
     assign {
         ex_pc,          // 148:117
         inst,           // 116:85
@@ -54,7 +56,8 @@ module EX(
         sel_alu_src2,   // 79:76
         data_sram_en,    // 75
         data_sram_wen,   // 74:71
-        hilo_we,
+        hi_we,
+        lo_we,
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64
@@ -69,6 +72,7 @@ module EX(
 
     wire [31:0] alu_src1, alu_src2;
     wire [31:0] alu_result, ex_result;
+    wire [31:0] mul_op1, mul_op2;
     wire [63:0] mul_result;
     wire mul_sign;
     wire mul_start;
@@ -78,6 +82,9 @@ module EX(
     assign alu_src2 = sel_alu_src2[1] ? imm_sign_extend :
                       sel_alu_src2[2] ? 32'd8 :
                       sel_alu_src2[3] ? imm_zero_extend : rf_rdata2;
+                      
+    assign mul_op1 = sel_alu_src1[0] ? rf_rdata1:0;
+    assign mul_op2 = sel_alu_src2[0] ? rf_rdata2:0;
     
     alu u_alu(
     	.alu_control (alu_op ),
@@ -110,20 +117,30 @@ module EX(
     assign data_sram_addr=data_sram_en? rf_rdata1+{{16{inst[15]}},inst[15:0]}:32'b0;
     assign data_sram_wdata=data_sram_en?rf_rdata2:32'b0;
     assign ex_result =is_delay_slot_i ? link_address_o:data_sram_en?data_sram_wdata:alu_result;
-     
+    assign hi_o = hi_we ? rf_rdata1:0;
+    assign lo_o = lo_we? rf_rdata1:0;
+    
     assign ex_to_mem_bus = {
         ex_pc,          // 115:84
         data_sram_en,    // 75
         data_sram_wen,   // 74:71
         sel_rf_res,     // 70
+        hi_we,
+        lo_we,
         rf_we,          // 69
         rf_waddr,       // 68:64
         ld_and_st_op, 
-        ex_result       // 31:0
+        ex_result,       // 31:0
+        hi_o,
+        lo_o
     };
     assign ex_to_id_bus= { 
         rf_we,
         rf_waddr,
+        hi_we,
+        lo_we,
+        hi_o,
+        lo_o,
         ld_and_st_op,
         ex_result
     };

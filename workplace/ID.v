@@ -82,7 +82,7 @@ module ID(
     wire [31:0] rs_d, rt_d, rd_d, sa_d;
 
     wire [2:0] sel_alu_src1;
-    wire [3:0] sel_alu_src2;
+    wire [2:0] sel_alu_src2;
     wire [11:0] alu_op;
 
     wire data_sram_en;
@@ -99,11 +99,23 @@ module ID(
     wire [4:0]ex_to_id_waddr;
     wire [31:0]ex_to_id_wdata;
     wire [5:0] ex_to_id_op;
+    wire ex_to_id_hi_we;
+    wire ex_to_id_lo_we;
+    wire [31:0] ex_to_id_hi;
+    wire [31:0] ex_to_id_lo;
     
     wire mem_to_id_we;
     wire [4:0]mem_to_id_waddr;
     wire [31:0]mem_to_id_wdata;
-
+    wire mem_to_id_hi_we;
+    wire mem_to_id_lo_we;
+    wire [31:0] mem_to_id_hi;
+    wire [31:0] mem_to_id_lo;
+    
+    wire hi_we;
+    wire lo_we;
+    wire hi_re;
+    wire lo_re;
     regfile u_regfile(
     	.clk    (clk    ),
         .raddr1 (rs ),
@@ -127,18 +139,26 @@ module ID(
     assign base = inst[25:21];
     assign offset = inst[15:0];
     assign sel = inst[2:0];
-    
+   
     assign {
         ex_to_id_we,
         ex_to_id_waddr,
         ex_to_id_op,
-        ex_to_id_wdata
+        ex_to_id_wdata,
+        ex_to_id_hi_we,
+        ex_to_id_lo_we,
+        ex_to_id_hi,
+        ex_to_id_lo
     }=ex_to_id_bus;
 
     assign {
         mem_to_id_we,
         mem_to_id_waddr,
-        mem_to_id_wdata
+        mem_to_id_wdata,
+        mem_to_id_hi_we,
+        mem_to_id_lo_we,
+        mem_to_id_hi,
+        mem_to_id_lo
     }=mem_to_id_bus;
 
     wire inst_ori, inst_lui, inst_addiu, inst_beq,inst_sudu,inst_jr,
@@ -146,7 +166,8 @@ module ID(
     inst_slti,inst_sltiu,inst_j,inst_beqz,inst_add,inst_sllv,inst_addi,
     inst_sub,inst_sra,inst_srav,inst_srl,inst_and,inst_nor,inst_andi,
     inst_xori,inst_srlv,inst_bgez,inst_bgtz,inst_blez,inst_bltz,
-    inst_bltzal,inst_bgezal,inst_jalr;
+    inst_bltzal,inst_bgezal,inst_jalr,inst_mfhi,inst_mflo,inst_mthi,
+    inst_mtlo;
 
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
@@ -226,10 +247,17 @@ module ID(
     assign inst_sw     = op_d[6'b101011];
     assign inst_lw      = op_d[6'b100011];
     
+    assign inst_mfhi = op_d[6'b000000]&func_d[6'b010000];
+    assign inst_mflo = op_d[6'b000000]&func_d[6'b010010];
+    assign inst_mthi = op_d[6'b000000]&func_d[6'b010001];
+    assign inst_mtlo = op_d[6'b000000]&func_d[6'b010011];
+    
 //传给ex的结果，包含数据相关
     assign reg_o1=((ce==1'b1)&&(ex_to_id_we==1'b1)&&(ex_to_id_waddr==rs))? ex_to_id_wdata 
     : ((ce==1'b1)&&(mem_to_id_we==1'b1)&&(mem_to_id_waddr==rs))? mem_to_id_wdata
-    : (ce==1'b1)? rdata1:(ce==1'b0)? imm:`INIT;
+    : (ex_to_id_hi_we&hi_re)? ex_to_id_hi:(ex_to_id_lo_we&lo_re) ? ex_to_id_lo
+    : (mem_to_id_hi_we&hi_re)? mem_to_id_hi: (mem_to_id_lo_we&lo_re) ? mem_to_id_lo
+    :(ce==1'b1)? rdata1:(ce==1'b0)? imm:`INIT;
     assign reg_o2=((ce==1'b1)&&(ex_to_id_we==1'b1)&&(ex_to_id_waddr==rt))? ex_to_id_wdata 
     : ((ce==1'b1)&&(mem_to_id_we==1'b1)&&(mem_to_id_waddr==rt))? mem_to_id_wdata
      : (ce==1'b1)? rdata2:(ce==1'b0)? imm:`INIT;
@@ -239,14 +267,13 @@ module ID(
     | inst_addu | inst_or | inst_sw | inst_lw | inst_xor | inst_sltu
     | inst_slt | inst_slti | inst_sltiu | inst_add | inst_sllv | inst_addi
     | inst_sub | inst_srav | inst_and | inst_nor | inst_andi | inst_xori
-    | inst_srlv | inst_bgezal | inst_bltzal | inst_jalr;
+    | inst_srlv | inst_bgezal | inst_bltzal | inst_jalr | inst_mthi | inst_mtlo;
 
     // pc to reg1  //操作数1选择是否取PC的值
     assign sel_alu_src1[1] = 1'b0;
 
     // sa_zero_extend to reg1 //取sa扩展
     assign sel_alu_src1[2] = inst_sll | inst_sra | inst_srl;
-
     
     // rt to reg2 操作数2选择是否从取rt对应地址的值
     assign sel_alu_src2[0] = inst_sudu | inst_addu | inst_sll | inst_or | inst_sw | inst_xor
@@ -261,7 +288,6 @@ module ID(
 
     // imm_zero_extend to reg2  操作数2取有无符号扩展的立即数
     assign sel_alu_src2[3] = inst_ori | inst_andi | inst_xori;
-
 
 //alu运算类型
     assign op_add = inst_addiu | inst_addu | inst_add | inst_addi;
@@ -296,20 +322,25 @@ module ID(
      | inst_addu | inst_sll | inst_or | inst_lw | inst_xor | inst_sltu | inst_slt
      | inst_slti | inst_sltiu | inst_add | inst_sllv | inst_addi | inst_sub | inst_sra
      | inst_srav | inst_srl | inst_and | inst_nor | inst_andi | inst_xori | inst_srlv
-     | inst_bgezal | inst_bltzal | inst_jalr;
-
+     | inst_bgezal | inst_bltzal | inst_jalr | inst_mfhi | inst_mflo;
+     assign hi_re = inst_mfhi;
+     assign lo_re = inst_mflo;
+     
+     assign hi_we = inst_mthi;
+     assign lo_we = inst_mtlo;
 
 //选择存到哪个寄存器中
     // store in [rd] 
     assign sel_rf_dst[0] = inst_sudu | inst_addu | inst_sll | inst_or | inst_xor | inst_sltu
                                            | inst_slt | inst_add | inst_sllv | inst_sub | inst_sra | inst_srav
-                                           | inst_and | inst_nor | inst_srl | inst_srlv | inst_jalr;
+                                           | inst_and | inst_nor | inst_srl | inst_srlv | inst_jalr | inst_mfhi
+                                           | inst_mflo;
     // store in [rt] 
     assign sel_rf_dst[1] = inst_ori | inst_lui | inst_addiu | inst_lw | inst_slti | inst_sltiu
                                           | inst_addi | inst_andi | inst_xori;
     // store in [31]
     assign sel_rf_dst[2] = inst_jal | inst_bgezal | inst_bltzal;
-
+    
 
     // sel for regfile address 要写入寄存器的addr
     assign rf_waddr = {5{sel_rf_dst[0]}} & rd 
@@ -319,13 +350,15 @@ module ID(
     // 0 from alu_res ; 1 from ld_res
     assign sel_rf_res = inst_lw;
     assign id_to_ex_bus = {
-        id_pc,          // 158:127
-        inst,           // 126:95
-        alu_op,         // 94:83
-        sel_alu_src1,   // 82:80
-        sel_alu_src2,   // 79:76
+        id_pc,          // 161:130
+        inst,           // 129:98
+        alu_op,         // 97:86
+        sel_alu_src1,   // 85:81
+        sel_alu_src2,   // 80:76
         data_sram_en,    // 75
         data_sram_wen,   // 74:71
+        hi_we,
+        lo_we,
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64

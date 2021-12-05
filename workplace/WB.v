@@ -33,22 +33,34 @@ module WB(
     end
 
     wire [31:0] wb_pc;
+    wire hi_we;
+    wire lo_we;
     wire rf_we;
     wire [4:0] rf_waddr;
     wire [31:0] rf_wdata;
+    wire [31:0] hi_o;
+    wire [31:0] lo_o;
 
     assign {
         wb_pc,
+        hi_we,
+        lo_we,
         rf_we,
         rf_waddr,
-        rf_wdata
+        rf_wdata,
+        hi_o,
+        lo_o
     } = mem_to_wb_bus_r;
 
     // assign wb_to_rf_bus = mem_to_wb_bus_r[`WB_TO_RF_WD-1:0];
     assign wb_to_rf_bus = {
+        hi_we,
+        lo_we,
         rf_we,
         rf_waddr,
-        rf_wdata
+        rf_wdata,
+        hi_o,
+        lo_o
     };
 
     assign debug_wb_pc = wb_pc;
