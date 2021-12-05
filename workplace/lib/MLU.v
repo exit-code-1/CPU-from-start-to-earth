@@ -114,4 +114,5 @@ module MLU(
   assign tree5_1=mul_start_i ? tree4_1+{tree4_2,8'b0} :0;
   assign tree5_2=mul_start_i ? tree4_3+{tree4_4,8'b0} :0;
   assign tree6_out=mul_start_i ? tree15_1+{tree5_2,16'b0} :0;
+  assign result=(mul_sign&(mul_op1[31]^mul_op2[31]))? ~tree6_out+1 : tree6_out;
 endmodule

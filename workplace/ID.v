@@ -167,7 +167,7 @@ module ID(
     inst_sub,inst_sra,inst_srav,inst_srl,inst_and,inst_nor,inst_andi,
     inst_xori,inst_srlv,inst_bgez,inst_bgtz,inst_blez,inst_bltz,
     inst_bltzal,inst_bgezal,inst_jalr,inst_mfhi,inst_mflo,inst_mthi,
-    inst_mtlo;
+    inst_mtlo,inst_mult,inst_multu;
 
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
@@ -247,6 +247,9 @@ module ID(
     assign inst_sw     = op_d[6'b101011];
     assign inst_lw      = op_d[6'b100011];
     
+    assign inst_mult=op_d[6'b000000]&func_d[6'b011000];
+    assign inst_multu=op_d[6'b000000]&func_d[6'b011001];
+    
     assign inst_mfhi = op_d[6'b000000]&func_d[6'b010000];
     assign inst_mflo = op_d[6'b000000]&func_d[6'b010010];
     assign inst_mthi = op_d[6'b000000]&func_d[6'b010001];
@@ -267,7 +270,8 @@ module ID(
     | inst_addu | inst_or | inst_sw | inst_lw | inst_xor | inst_sltu
     | inst_slt | inst_slti | inst_sltiu | inst_add | inst_sllv | inst_addi
     | inst_sub | inst_srav | inst_and | inst_nor | inst_andi | inst_xori
-    | inst_srlv | inst_bgezal | inst_bltzal | inst_jalr | inst_mthi | inst_mtlo;
+    | inst_srlv | inst_bgezal | inst_bltzal | inst_jalr | inst_mthi | inst_mtlo
+    | inst_mult | inst_multu;
 
     // pc to reg1  //操作数1选择是否取PC的值
     assign sel_alu_src1[1] = 1'b0;
@@ -278,7 +282,8 @@ module ID(
     // rt to reg2 操作数2选择是否从取rt对应地址的值
     assign sel_alu_src2[0] = inst_sudu | inst_addu | inst_sll | inst_or | inst_sw | inst_xor
                                               | inst_sltu | inst_slt | inst_add | inst_sllv | inst_sub | inst_sra 
-                                              | inst_srav | inst_srl | inst_and | inst_nor | inst_srlv;
+                                              | inst_srav | inst_srl | inst_and | inst_nor | inst_srlv | inst_mult
+                                              | inst_multu;
     
     // imm_sign_extend to reg2  操作数2选择取有符号扩展的立即数
     assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_slti | inst_sltiu | inst_addi;
@@ -326,8 +331,8 @@ module ID(
      assign hi_re = inst_mfhi;
      assign lo_re = inst_mflo;
      
-     assign hi_we = inst_mthi;
-     assign lo_we = inst_mtlo;
+     assign hi_we = inst_mthi | inst_mult | inst_multu;
+     assign lo_we = inst_mtlo | inst_mult | inst_multu;
 
 //选择存到哪个寄存器中
     // store in [rd] 

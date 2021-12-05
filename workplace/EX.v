@@ -76,15 +76,26 @@ module EX(
     wire [63:0] mul_result;
     wire mul_sign;
     wire mul_start;
+    wire inst_mult,inst_multu;
+    wire inst_mfhi,inst_mflo,inst_mthi,inst_mtlo;
+    
     assign alu_src1 = sel_alu_src1[1] ? ex_pc :
                       sel_alu_src1[2] ? sa_zero_extend : rf_rdata1;
 
     assign alu_src2 = sel_alu_src2[1] ? imm_sign_extend :
                       sel_alu_src2[2] ? 32'd8 :
                       sel_alu_src2[3] ? imm_zero_extend : rf_rdata2;
-                      
+     
+    assign inst_mult=(inst[5:0]==6'b011000&inst[31:26]==6'b000000); 
+    assign inst_multu=(inst[5:0]==6'b011001&inst[31:26]==6'b000000);
+    assign inst_mfhi=(inst[5:0]==6'b010000&inst[31:26]==6'b000000); 
+    assign inst_mflo=(inst[5:0]==6'b010010&inst[31:26]==6'b000000);           
+    assign inst_mthi=(inst[5:0]==6'b010001&inst[31:26]==6'b000000); 
+    assign inst_mtlo=(inst[5:0]==6'b010011&inst[31:26]==6'b000000);                         
     assign mul_op1 = sel_alu_src1[0] ? rf_rdata1:0;
     assign mul_op2 = sel_alu_src2[0] ? rf_rdata2:0;
+    assign mul_sign=inst_mult;
+    assign mul_start=inst_mult | inst_multu;
     
     alu u_alu(
     	.alu_control (alu_op ),
@@ -97,8 +108,8 @@ module EX(
              .resten (~rst),
              .mul_sign (mul_sign),
              .mul_start_i (mul_start),
-             .mul_op1 (rf_rdata1),
-             .mul_op2 (rf_rdata2),
+             .mul_op1 (mul_op1),
+             .mul_op2 (mul_op2),
              .result (mul_result)
               );
              
@@ -116,9 +127,10 @@ module EX(
     assign ld_and_st_op=data_sram_en? inst[31:26]:6'b000000;
     assign data_sram_addr=data_sram_en? rf_rdata1+{{16{inst[15]}},inst[15:0]}:32'b0;
     assign data_sram_wdata=data_sram_en?rf_rdata2:32'b0;
-    assign ex_result =is_delay_slot_i ? link_address_o:data_sram_en?data_sram_wdata:alu_result;
-    assign hi_o = hi_we ? rf_rdata1:0;
-    assign lo_o = lo_we? rf_rdata1:0;
+    assign ex_result = (inst_mfhi | inst_mflo )? rf_rdata1:
+    is_delay_slot_i ? link_address_o:data_sram_en?data_sram_wdata:alu_result;
+    assign hi_o = (inst_mult | inst_multu) ? mul_result[63:32] :inst_mthi ? rf_rdata1:0;
+    assign lo_o = (inst_mult | inst_multu) ? mul_result[31:0] : inst_mtlo ? rf_rdata1:0;
     
     assign ex_to_mem_bus = {
         ex_pc,          // 115:84
