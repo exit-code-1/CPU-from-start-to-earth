@@ -377,8 +377,8 @@ module ID(
         sel_alu_src2,   // 80:76
         data_sram_en,    // 75
         data_sram_wen,   // 74:71
-        hi_we,
-        lo_we,
+        hi_we_o,
+        lo_we_o,
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64
