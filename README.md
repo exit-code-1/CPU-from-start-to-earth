@@ -1,5 +1,7 @@
 # CPU-from-start-to-earth
 # 组长：
+# 12/6
+* 修复了ID段和WB段hilo_we的冲突
 # 12/5
 * 添加乘法指令以及连线
 # 12/4
