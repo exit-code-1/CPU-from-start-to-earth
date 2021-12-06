@@ -37,7 +37,8 @@ module regfile(
 //增加了相隔三条的数据相关
     // read out 1
     assign rdata1 = (hi_re&hi_we)? hi_i : hi_re? hi_o :(lo_re&lo_we)? lo_i : lo_re? lo_o:
-    (raddr1==waddr) ? wdata: (raddr1 == 5'b0) ? 32'b0 :reg_array[raddr1];
+    (raddr1 == 5'b0) ? 32'b0 :
+    (raddr1==waddr) ? wdata:reg_array[raddr1];
 
     // read out2
     assign rdata2 = (raddr2 == 5'b0) ? 32'b0 : (raddr2==waddr) ? wdata: reg_array[raddr2];
