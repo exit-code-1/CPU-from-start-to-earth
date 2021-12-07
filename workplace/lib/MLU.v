@@ -64,8 +64,8 @@ module MLU(
   reg [50:0] tree5_2;
   wire [63:0] tree6_out;
   integer loop;
-  assign mul_sel1=(mul_op1[31]&mul_sign)? mul_op1+1 : mul_op1;
-  assign mul_sel2=(mul_op2[31]&mul_sign)? mul_op2+1 : mul_op2;
+  assign mul_sel1=(mul_op1[31]&mul_sign)? ~mul_op1+1 : mul_op1;
+  assign mul_sel2=(mul_op2[31]&mul_sign)? ~mul_op2+1 : mul_op2;
   always @(*)
   begin
        if(!resetn | !mul_start_i )begin
