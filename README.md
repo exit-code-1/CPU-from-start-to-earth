@@ -1,7 +1,9 @@
 # CPU-from-start-to-earth
 # 组长：
 # 12/7
-* 修复了MLU的bug,进一步优化了位宽并且使其可综合
+* 能综合个鬼哦，上票
+# 12/7
+* 修复了MLU的bug,进一步优化了位宽并且 代码可综合？
 # 12/6
 * 修复了ID段和WB段hilo_we的冲突
 * 修复了regfile中 raddr判断位置的错误
