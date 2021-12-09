@@ -126,7 +126,44 @@ module MLU(
          tree5_2<= tree4_3+{tree4_4,8'b0} ;
          state <=5;
        end
-  end
+       else begin
+       for (loop=0;loop<32;loop=loop+1)
+         begin
+            tree1[loop] <=0;
+         end
+         tree2_1<=0 ;
+         tree2_2<=0 ;
+         tree2_3<=0 ;
+         tree2_4<=0 ;
+         tree2_5<=0 ;
+         tree2_6<=0 ;
+         tree2_7<=0 ;
+         tree2_8<=0 ;
+         tree2_9<=0 ;
+         tree2_10<=0 ;
+         tree2_11<=0 ;
+         tree2_12<=0 ;
+         tree2_13<=0 ;
+         tree2_14<=0 ;
+         tree2_15<=0 ;
+         tree2_16<=0 ;
+         tree3_1<=0 ;
+         tree3_2<=0 ;
+         tree3_3<=0 ;
+         tree3_4<=0 ;
+         tree3_5<=0 ;
+         tree3_6<=0 ;
+         tree3_7<=0 ;
+         tree3_8<=0 ;
+         tree4_1<=0 ;
+         tree4_2<=0 ;
+         tree4_3<=0 ;
+         tree4_4<=0 ;
+         tree5_1<=0 ;
+         tree5_2<=0 ;
+         state <=5;
+       end
+ end
   assign tree6_out=mul_start_i ? tree5_1+{tree5_2,16'b0} :0;
   assign result=(mul_sign&(mul_op1[31]^mul_op2[31]))? ~tree6_out+1 : tree6_out;
 endmodule
