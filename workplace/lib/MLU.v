@@ -27,7 +27,7 @@ module MLU(
   input wire mul_start_i,
   input wire [31:0] mul_op1,
   input wire [31:0] mul_op2,
-  output wire [63:0] result
+  output reg [63:0] result
     );
   wire [31:0] mul_sel1;
   wire [31:0] mul_sel2;
@@ -62,7 +62,7 @@ module MLU(
   reg [41:0] tree4_4;
   reg [50:0] tree5_1;
   reg [50:0] tree5_2;
-  wire [63:0] tree6_out;
+  reg [63:0] tree6_out;
   integer loop;
   reg [2:0]state;
   assign mul_sel1=(mul_op1[31]&mul_sign)? ~mul_op1+1 : mul_op1;
@@ -84,7 +84,9 @@ module MLU(
             end
             state <=5'b1;
        end
-       else if(state==5'b1)begin
+ end
+ always @(*)begin
+ if(state==5'b1)begin
         tree2_1<= tree1[0]+{tree1[1],1'b0} ;
         tree2_2<= tree1[2]+{tree1[3],1'b0} ;
         tree2_3<= tree1[4]+{tree1[5],1'b0} ;
@@ -103,35 +105,8 @@ module MLU(
         tree2_16<= tree1[30]+{tree1[31],1'b0} ;
         state <=2;
        end
-       else if(state==2)begin
-        tree3_1<= tree2_1+{tree2_2,2'b0} ;
-        tree3_2<= tree2_3+{tree2_4,2'b0} ;
-        tree3_3<= tree2_5+{tree2_6,2'b0} ;
-        tree3_4<= tree2_7+{tree2_8,2'b0} ;
-        tree3_5<= tree2_9+{tree2_10,2'b0} ;
-        tree3_6<= tree2_11+{tree2_12,2'b0} ;
-        tree3_7<= tree2_13+{tree2_14,2'b0} ;
-        tree3_8<= tree2_15+{tree2_16,2'b0} ;
-        state <=3;
-       end
-       else if(state==3)begin
-        tree4_1<= tree3_1+{tree3_2,4'b0} ;
-        tree4_2<= tree3_3+{tree3_4,4'b0} ;
-        tree4_3<= tree3_5+{tree3_6,4'b0} ;
-        tree4_4<= tree3_7+{tree3_8,4'b0} ;
-        state <=4;
-       end
-        else if(state==4)begin
-         tree5_1<= tree4_1+{tree4_2,8'b0} ;
-         tree5_2<= tree4_3+{tree4_4,8'b0} ;
-         state <=5;
-       end
        else begin
-       for (loop=0;loop<32;loop=loop+1)
-         begin
-            tree1[loop] <=0;
-         end
-         tree2_1<=0 ;
+        tree2_1<=0 ;
          tree2_2<=0 ;
          tree2_3<=0 ;
          tree2_4<=0 ;
@@ -147,7 +122,22 @@ module MLU(
          tree2_14<=0 ;
          tree2_15<=0 ;
          tree2_16<=0 ;
-         tree3_1<=0 ;
+ end
+ end
+  always @(*)begin
+if(state==2)begin
+        tree3_1<= tree2_1+{tree2_2,2'b0} ;
+        tree3_2<= tree2_3+{tree2_4,2'b0} ;
+        tree3_3<= tree2_5+{tree2_6,2'b0} ;
+        tree3_4<= tree2_7+{tree2_8,2'b0} ;
+        tree3_5<= tree2_9+{tree2_10,2'b0} ;
+        tree3_6<= tree2_11+{tree2_12,2'b0} ;
+        tree3_7<= tree2_13+{tree2_14,2'b0} ;
+        tree3_8<= tree2_15+{tree2_16,2'b0} ;
+        state <=3;
+       end
+       else begin
+        tree3_1<=0 ;
          tree3_2<=0 ;
          tree3_3<=0 ;
          tree3_4<=0 ;
@@ -155,15 +145,50 @@ module MLU(
          tree3_6<=0 ;
          tree3_7<=0 ;
          tree3_8<=0 ;
+ end
+ end
+ always @(*)begin
+if(state==3)begin
+        tree4_1<= tree3_1+{tree3_2,4'b0} ;
+        tree4_2<= tree3_3+{tree3_4,4'b0} ;
+        tree4_3<= tree3_5+{tree3_6,4'b0} ;
+        tree4_4<= tree3_7+{tree3_8,4'b0} ;
+        state <=4;
+        end
+       else begin
          tree4_1<=0 ;
          tree4_2<=0 ;
          tree4_3<=0 ;
          tree4_4<=0 ;
-         tree5_1<=0 ;
-         tree5_2<=0 ;
+ end
+ end
+  always @(*)begin
+if(state==4)begin
+         tree5_1<= tree4_1+{tree4_2,8'b0} ;
+         tree5_2<= tree4_3+{tree4_4,8'b0} ;
          state <=5;
        end
+       else begin
+         tree5_1<=0 ;
+         tree5_2<=0 ;
  end
-  assign tree6_out=mul_start_i ? tree5_1+{tree5_2,16'b0} :0;
-  assign result=(mul_sign&(mul_op1[31]^mul_op2[31]))? ~tree6_out+1 : tree6_out;
+ end
+  always @(*)begin
+ if(state==5)begin
+        tree6_out<=tree5_1+{tree5_2,16'b0};
+        state<=6;
+       end
+       else begin
+        tree6_out <=0;
+ end
+ end
+   always @(posedge clk & state==6)begin
+ if(state==6)begin
+       result<=(mul_sign&(mul_op1[31]^mul_op2[31]))? ~tree6_out+1 : tree6_out;
+       end
+       else begin
+       result <=0;
+ end
+ end
+
 endmodule
