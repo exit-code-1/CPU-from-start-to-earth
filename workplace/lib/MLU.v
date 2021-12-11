@@ -25,6 +25,7 @@ module MLU(
   input wire resetn,
   input wire mul_sign,
   input wire mul_start_i,
+  output reg mul_ready,
   input wire [31:0] mul_op1,
   input wire [31:0] mul_op2,
   output reg [63:0] result
@@ -67,7 +68,7 @@ module MLU(
   reg [2:0]state;
   assign mul_sel1=(mul_op1[31]&mul_sign)? ~mul_op1+1 : mul_op1;
   assign mul_sel2=(mul_op2[31]&mul_sign)? ~mul_op2+1 : mul_op2;
-  always @(*)
+  always @(posedge clk)
   begin
        if(!resetn | !mul_start_i )begin
          for (loop=0;loop<32;loop=loop+1)
@@ -75,18 +76,54 @@ module MLU(
             tree1[loop] <=0;
          end
          state <=0;
+         mul_ready<=0;
        end
-       else if(mul_start_i&state==5'b0)
-       begin
-            for (loop=0;loop<32;loop=loop+1)
+       else 
+       begin           
+            case(state)
+            3'b000:begin
+            state<=1;
+            end
+            3'b001:begin
+            state<=2;
+            end
+            3'b010:begin
+            state<=3;
+            end
+            3'b011:begin
+            state<=4;
+            end
+            3'b100:begin
+            state<=5;
+            end
+            3'b101:begin
+            state<=6;
+            end
+            default:begin
+            state<=7;
+            mul_ready<=1;
+            end
+            endcase
+       end
+ end
+always @(posedge clk)begin
+if(mul_start_i&state==0)begin
+            mul_ready<=0;
+for (loop=0;loop<32;loop=loop+1)
             begin
             tree1[loop] <= mul_sel2[loop]? mul_sel1:0;
             end
-            state <=5'b1;
-       end
  end
- always @(*)begin
- if(state==5'b1)begin
+ else begin
+           for (loop=0;loop<32;loop=loop+1)
+            begin
+            tree1[loop] <= 0;
+            end
+ end
+end
+ always @(posedge clk)begin
+ if(state==1)begin
+        mul_ready<=0;
         tree2_1<= tree1[0]+{tree1[1],1'b0} ;
         tree2_2<= tree1[2]+{tree1[3],1'b0} ;
         tree2_3<= tree1[4]+{tree1[5],1'b0} ;
@@ -103,7 +140,6 @@ module MLU(
         tree2_14<= tree1[26]+{tree1[27],1'b0} ;
         tree2_15<= tree1[28]+{tree1[29],1'b0} ;
         tree2_16<= tree1[30]+{tree1[31],1'b0} ;
-        state <=2;
        end
        else begin
         tree2_1<=0 ;
@@ -124,8 +160,9 @@ module MLU(
          tree2_16<=0 ;
  end
  end
-  always @(*)begin
+  always @(posedge clk)begin
 if(state==2)begin
+        mul_ready<=0;
         tree3_1<= tree2_1+{tree2_2,2'b0} ;
         tree3_2<= tree2_3+{tree2_4,2'b0} ;
         tree3_3<= tree2_5+{tree2_6,2'b0} ;
@@ -134,10 +171,10 @@ if(state==2)begin
         tree3_6<= tree2_11+{tree2_12,2'b0} ;
         tree3_7<= tree2_13+{tree2_14,2'b0} ;
         tree3_8<= tree2_15+{tree2_16,2'b0} ;
-        state <=3;
        end
        else begin
-        tree3_1<=0 ;
+         mul_ready<=0;
+         tree3_1<=0 ;
          tree3_2<=0 ;
          tree3_3<=0 ;
          tree3_4<=0 ;
@@ -147,13 +184,13 @@ if(state==2)begin
          tree3_8<=0 ;
  end
  end
- always @(*)begin
+ always @(posedge clk)begin
 if(state==3)begin
+        mul_ready<=0;
         tree4_1<= tree3_1+{tree3_2,4'b0} ;
         tree4_2<= tree3_3+{tree3_4,4'b0} ;
         tree4_3<= tree3_5+{tree3_6,4'b0} ;
         tree4_4<= tree3_7+{tree3_8,4'b0} ;
-        state <=4;
         end
        else begin
          tree4_1<=0 ;
@@ -162,29 +199,30 @@ if(state==3)begin
          tree4_4<=0 ;
  end
  end
-  always @(*)begin
+  always @(posedge clk)begin
 if(state==4)begin
+         mul_ready<=0;
          tree5_1<= tree4_1+{tree4_2,8'b0} ;
          tree5_2<= tree4_3+{tree4_4,8'b0} ;
-         state <=5;
        end
        else begin
          tree5_1<=0 ;
          tree5_2<=0 ;
  end
  end
-  always @(*)begin
+  always @(posedge clk)begin
  if(state==5)begin
+        mul_ready<=0;
         tree6_out<=tree5_1+{tree5_2,16'b0};
-        state<=6;
        end
        else begin
         tree6_out <=0;
  end
  end
-   always @(posedge clk & state==6)begin
+   always @(posedge clk)begin
  if(state==6)begin
        result<=(mul_sign&(mul_op1[31]^mul_op2[31]))? ~tree6_out+1 : tree6_out;
+       mul_ready<=1;
        end
        else begin
        result <=0;
