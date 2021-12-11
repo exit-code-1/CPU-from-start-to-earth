@@ -8,11 +8,13 @@ module EX(
     input wire [`ID_TO_EX_WD-1:0] id_to_ex_bus,
     input wire [`DELAY_TO_EX_WD-1:0] is_in_delay_to_ex,
     output wire [`EX_TO_MEM_WD-1:0] ex_to_mem_bus,
+
     output wire data_sram_en,
     output wire [3:0] data_sram_wen,
     output wire [31:0] data_sram_addr,
     output wire [31:0] data_sram_wdata,
-    output wire [`EX_TO_ID_WD-1:0] ex_to_id_bus
+    output wire [`EX_TO_ID_WD-1:0] ex_to_id_bus,
+    output wire stallreq_for_ex
 );
 
     reg [`ID_TO_EX_WD-1:0] id_to_ex_bus_r;
@@ -85,7 +87,7 @@ module EX(
     assign alu_src2 = sel_alu_src2[1] ? imm_sign_extend :
                       sel_alu_src2[2] ? 32'd8 :
                       sel_alu_src2[3] ? imm_zero_extend : rf_rdata2;
-     
+                      
     assign inst_mult=(inst[5:0]==6'b011000&inst[31:26]==6'b000000); 
     assign inst_multu=(inst[5:0]==6'b011001&inst[31:26]==6'b000000);
     assign inst_mfhi=(inst[5:0]==6'b010000&inst[31:26]==6'b000000); 
@@ -96,6 +98,8 @@ module EX(
     assign mul_op2 = sel_alu_src2[0] ? rf_rdata2:0;
     assign mul_sign=inst_mult;
     assign mul_start=inst_mult | inst_multu;
+    
+    
     
     alu u_alu(
     	.alu_control (alu_op ),
@@ -112,7 +116,7 @@ module EX(
              .mul_op2 (mul_op2),
              .result (mul_result)
               );
-             
+              
     wire is_delay_slot_i;
     wire [31:0] link_address_o;
    
@@ -129,13 +133,16 @@ module EX(
     assign data_sram_wdata=data_sram_en?rf_rdata2:32'b0;
     assign ex_result = (inst_mfhi | inst_mflo )? rf_rdata1:
     is_delay_slot_i ? link_address_o:data_sram_en?data_sram_wdata:alu_result;
-    assign hi_o = (inst_mult | inst_multu) ? mul_result[63:32] :inst_mthi ? rf_rdata1:0;
-    assign lo_o = (inst_mult | inst_multu) ? mul_result[31:0] : inst_mtlo ? rf_rdata1:0;
+    assign hi_o = (inst_mult | inst_multu) ? mul_result[63:32] :(inst_div | inst_divu)?div_result[63:32]:inst_mthi ? rf_rdata1:0;
+    assign lo_o = (inst_mult | inst_multu) ? mul_result[31:0] :(inst_div | inst_divu)?div_result[31:0]: inst_mtlo ? rf_rdata1:0;
+    
+    
     
     assign ex_to_mem_bus = {
         ex_pc,          // 115:84
         data_sram_en,    // 75
         data_sram_wen,   // 74:71
+        //data_sram_addr[1:0],
         sel_rf_res,     // 70
         hi_we,
         lo_we,
@@ -157,5 +164,97 @@ module EX(
         ex_result
     };
     
+    wire [63:0] div_result;
+    wire inst_div, inst_divu;
+    wire div_ready_i;
+    reg stallreq_for_div;
+    assign stallreq_for_ex = stallreq_for_div;
+
+    reg [31:0] div_opdata1_o;
+    reg [31:0] div_opdata2_o;
+    reg div_start_o;
+    reg signed_div_o;
+    assign inst_div=(inst[5:0]==6'b011010&inst[31:26]==6'b000000); 
+    assign inst_divu=(inst[5:0]==6'b011011&inst[31:26]==6'b000000); 
+    
+    
+    div u_div(
+    	.rst          (rst          ),
+        .clk          (clk          ),
+        .signed_div_i (signed_div_o ),
+        .opdata1_i    (div_opdata1_o    ),
+        .opdata2_i    (div_opdata2_o    ),
+        .start_i      (div_start_o      ),
+        .annul_i      (1'b0      ),
+        .result_o     (div_result     ), // ³ý·¨½á¹û 64bit
+        .ready_o      (div_ready_i      )
+    );
+    
+    always @ (*) begin
+        if (rst) begin
+            stallreq_for_div = `NoStop;
+            div_opdata1_o = `ZeroWord;
+            div_opdata2_o = `ZeroWord;
+            div_start_o = `DivStop;
+            signed_div_o = 1'b0;
+        end
+        else begin
+            stallreq_for_div = `NoStop;
+            div_opdata1_o = `ZeroWord;
+            div_opdata2_o = `ZeroWord;
+            div_start_o = `DivStop;
+            signed_div_o = 1'b0;
+            case ({inst_div,inst_divu})
+                2'b10:begin
+                    if (div_ready_i == `DivResultNotReady) begin
+                        div_opdata1_o = rf_rdata1;
+                        div_opdata2_o = rf_rdata2;
+                        div_start_o = `DivStart;
+                        signed_div_o = 1'b1;
+                        stallreq_for_div = `Stop;
+                    end
+                    else if (div_ready_i == `DivResultReady) begin
+                        div_opdata1_o = rf_rdata1;
+                        div_opdata2_o = rf_rdata2;
+                        div_start_o = `DivStop;
+                        signed_div_o = 1'b1;
+                        stallreq_for_div = `NoStop;
+                    end
+                    else begin
+                        div_opdata1_o = `ZeroWord;
+                        div_opdata2_o = `ZeroWord;
+                        div_start_o = `DivStop;
+                        signed_div_o = 1'b0;
+                        stallreq_for_div = `NoStop;
+                    end
+                end
+                2'b01:begin
+                    if (div_ready_i == `DivResultNotReady) begin
+                        div_opdata1_o = rf_rdata1;
+                        div_opdata2_o = rf_rdata2;
+                        div_start_o = `DivStart;
+                        signed_div_o = 1'b0;
+                        stallreq_for_div = `Stop;
+                    end
+                    else if (div_ready_i == `DivResultReady) begin
+                        div_opdata1_o = rf_rdata1;
+                        div_opdata2_o = rf_rdata2;
+                        div_start_o = `DivStop;
+                        signed_div_o = 1'b0;
+                        stallreq_for_div = `NoStop;
+                    end
+                    else begin
+                        div_opdata1_o = `ZeroWord;
+                        div_opdata2_o = `ZeroWord;
+                        div_start_o = `DivStop;
+                        signed_div_o = 1'b0;
+                        stallreq_for_div = `NoStop;
+                    end
+                end
+                default:begin
+                end
+            endcase
+        end
+    end
     
 endmodule
