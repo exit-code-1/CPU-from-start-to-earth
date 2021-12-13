@@ -71,10 +71,6 @@ module MLU(
   always @(posedge clk)
   begin
        if(!resetn | !mul_start_i )begin
-         for (loop=0;loop<32;loop=loop+1)
-         begin
-            tree1[loop] <=0;
-         end
          state <=0;
          mul_ready<=0;
        end
@@ -83,21 +79,27 @@ module MLU(
             case(state)
             3'b000:begin
             state<=1;
+            mul_ready<=0;
             end
             3'b001:begin
             state<=2;
+            mul_ready<=0;
             end
             3'b010:begin
             state<=3;
+            mul_ready<=0;
             end
             3'b011:begin
             state<=4;
+            mul_ready<=0;
             end
             3'b100:begin
             state<=5;
+            mul_ready<=0;
             end
             3'b101:begin
             state<=6;
+            mul_ready<=0;
             end
             default:begin
             state<=7;
@@ -108,7 +110,7 @@ module MLU(
  end
 always @(posedge clk)begin
 if(mul_start_i&state==0)begin
-            mul_ready<=0;
+
 for (loop=0;loop<32;loop=loop+1)
             begin
             tree1[loop] <= mul_sel2[loop]? mul_sel1:0;
@@ -123,7 +125,6 @@ for (loop=0;loop<32;loop=loop+1)
 end
  always @(posedge clk)begin
  if(state==1)begin
-        mul_ready<=0;
         tree2_1<= tree1[0]+{tree1[1],1'b0} ;
         tree2_2<= tree1[2]+{tree1[3],1'b0} ;
         tree2_3<= tree1[4]+{tree1[5],1'b0} ;
@@ -162,7 +163,6 @@ end
  end
   always @(posedge clk)begin
 if(state==2)begin
-        mul_ready<=0;
         tree3_1<= tree2_1+{tree2_2,2'b0} ;
         tree3_2<= tree2_3+{tree2_4,2'b0} ;
         tree3_3<= tree2_5+{tree2_6,2'b0} ;
@@ -173,7 +173,6 @@ if(state==2)begin
         tree3_8<= tree2_15+{tree2_16,2'b0} ;
        end
        else begin
-         mul_ready<=0;
          tree3_1<=0 ;
          tree3_2<=0 ;
          tree3_3<=0 ;
@@ -186,7 +185,6 @@ if(state==2)begin
  end
  always @(posedge clk)begin
 if(state==3)begin
-        mul_ready<=0;
         tree4_1<= tree3_1+{tree3_2,4'b0} ;
         tree4_2<= tree3_3+{tree3_4,4'b0} ;
         tree4_3<= tree3_5+{tree3_6,4'b0} ;
@@ -201,7 +199,6 @@ if(state==3)begin
  end
   always @(posedge clk)begin
 if(state==4)begin
-         mul_ready<=0;
          tree5_1<= tree4_1+{tree4_2,8'b0} ;
          tree5_2<= tree4_3+{tree4_4,8'b0} ;
        end
@@ -212,7 +209,6 @@ if(state==4)begin
  end
   always @(posedge clk)begin
  if(state==5)begin
-        mul_ready<=0;
         tree6_out<=tree5_1+{tree5_2,16'b0};
        end
        else begin
@@ -222,7 +218,6 @@ if(state==4)begin
    always @(posedge clk)begin
  if(state==6)begin
        result<=(mul_sign&(mul_op1[31]^mul_op2[31]))? ~tree6_out+1 : tree6_out;
-       mul_ready<=1;
        end
        else begin
        result <=0;

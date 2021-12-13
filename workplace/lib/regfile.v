@@ -34,9 +34,9 @@ module regfile(
         end
         end
     end
-//澧炲姞浜嗙浉闅斾笁鏉＄殑鏁版嵁鐩稿叧
+//增加了相隔三条的数据相关
     // read out 1
-    assign rdata1 = (hi_re&hi_we)? hi_i : hi_re? hi_o :(lo_re&lo_we)? lo_i : lo_re? lo_o:
+    assign rdata1 =(hi_re&hi_we)? hi_i : hi_re? hi_o :(lo_re&lo_we)? lo_i : lo_re? lo_o:
     (raddr1 == 5'b0) ? 32'b0 :
     (raddr1==waddr) ? wdata:reg_array[raddr1];
 

@@ -134,7 +134,6 @@ module EX(
     :(inst_sb&data_sram_addr[1:0]==2'b01)?4'b0010:(inst_sb&data_sram_addr[1:0]==2'b10)?4'b0100
     :(inst_sb&data_sram_addr[1:0]==2'b11)?4'b1000:(inst_sh&data_sram_addr[1:0]==2'b00)?4'b0011
     :(inst_sh&data_sram_addr[1:0]==2'b10)?4'b1100:sel_rf_res? 4'b0000:0;
-    
     assign data_sram_wdata=inst_sb?{ 4{rf_rdata2[7:0]}}:
     inst_sh? {2{ rf_rdata2[15:0] }}:
     inst_sw? rf_rdata2:32'b0;

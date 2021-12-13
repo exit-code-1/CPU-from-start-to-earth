@@ -8,7 +8,6 @@ module IF(
     // input wire [31:0] new_pc,
 
     input wire [`BR_WD-1:0] br_bus,
-
     output wire [`IF_TO_ID_WD-1:0] if_to_id_bus,
 
     output wire inst_sram_en,
@@ -27,16 +26,12 @@ module IF(
         br_addr
     } = br_bus;
 
-
     always @ (posedge clk) begin
         if (rst) begin
             pc_reg <= 32'hbfbf_fffc;
         end
         else if (stall[0]==`NoStop) begin
             pc_reg <= next_pc;
-        end
-        else if (stall[0]==`Stop) begin
-            pc_reg <= pc_reg;
         end
 
     end
@@ -51,7 +46,7 @@ module IF(
     end
 
 
-    assign next_pc =(stall[0]==`Stop)? pc_reg : br_e ? br_addr 
+    assign next_pc =(stall[0]==`Stop)? pc_reg :br_e ? br_addr 
                    : pc_reg + 32'h4;
 
     
