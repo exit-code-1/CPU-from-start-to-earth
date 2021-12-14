@@ -61,8 +61,8 @@ module MLU(
   reg [41:0] tree4_2;
   reg [41:0] tree4_3;
   reg [41:0] tree4_4;
-  reg [50:0] tree5_1;
-  reg [50:0] tree5_2;
+  reg [47:0] tree5_1;
+  reg [47:0] tree5_2;
   reg [63:0] tree6_out;
   integer loop;
   reg [2:0]state;
